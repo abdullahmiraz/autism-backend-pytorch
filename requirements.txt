@@ -1,11 +1,7 @@
 fastapi
-uvicorn
-pillow
-rembg
-opencv-python-headless
-numpy
-jinja2
-python-multipart
+pydantic
 torch
 torchvision
-scikit-image
+pillow
+opencv-python-headless
+numpy
