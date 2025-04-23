@@ -226,21 +226,57 @@ async def predict_from_images(images: List[UploadFile] = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/predict-video", response_model=AutismPredictionResponse)
-async def predict_from_video(video: UploadFile = File(...)):
+@router.post("/predict-videos", response_model=List[AutismPredictionResponse])
+async def predict_from_videos(videos: List[UploadFile] = File(...)):
     try:
-        video_path = os.path.join(UPLOAD_DIR, "videos", video.filename)
-        with open(video_path, "wb") as buffer:
-            shutil.copyfileobj(video.file, buffer)
-        result = predict_video_pytorch(video_path)
-        os.remove(video_path)
-        if "error" in result:
-            raise HTTPException(status_code=500, detail=result["error"])
-        return AutismPredictionResponse(
-            prediction=result["prediction"], confidence=result["confidence"]
-        )
+        if not videos:
+            raise HTTPException(status_code=400, detail="No videos uploaded.")
+
+        predictions = []
+
+        for video in videos:
+            video_path = os.path.join(UPLOAD_DIR, "videos", video.filename)
+            with open(video_path, "wb") as buffer:
+                shutil.copyfileobj(video.file, buffer)
+
+            result = predict_video_pytorch(video_path)
+            os.remove(video_path)
+
+            if "error" in result:
+                print(
+                    f"Warning: Skipping video {video.filename} due to error: {result['error']}"
+                )
+                continue
+
+            predictions.append(
+                AutismPredictionResponse(
+                    prediction=result["prediction"], confidence=result["confidence"]
+                )
+            )
+
+        if not predictions:
+            raise HTTPException(status_code=500, detail="Failed to predict any videos.")
+
+        return predictions
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# @router.post("/predict-video", response_model=AutismPredictionResponse)
+# async def predict_from_video(video: UploadFile = File(...)):
+#     try:
+#         video_path = os.path.join(UPLOAD_DIR, "videos", video.filename)
+#         with open(video_path, "wb") as buffer:
+#             shutil.copyfileobj(video.file, buffer)
+#         result = predict_video_pytorch(video_path)
+#         os.remove(video_path)
+#         if "error" in result:
+#             raise HTTPException(status_code=500, detail=result["error"])
+#         return AutismPredictionResponse(
+#             prediction=result["prediction"], confidence=result["confidence"]
+#         )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Include router in app
